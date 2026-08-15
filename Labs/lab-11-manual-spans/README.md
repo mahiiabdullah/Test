@@ -54,7 +54,11 @@ set +a
 echo "TEMPO_OTLP_PORT=$TEMPO_OTLP_PORT  TEMPO_QUERY_PORT=$TEMPO_QUERY_PORT  GRAFANA_PORT=$GRAFANA_PORT"
 ```
 
+![Load stack ports into shell](./images/load-stack-ports-into-shell.png)
+
 The health-check lines at the end of the script (`Tempo ready?` and `Grafana ready?`) should both report `200`. A `000` means the container is still booting — wait a few seconds and re-run `curl http://localhost:$TEMPO_QUERY_PORT/ready`.
+
+![Tempo and Grafana ready](./images/tempo-grafana-ready.png)
 
 ## Step 2 — Expose the stack + Flask through the load balancer
 
@@ -75,12 +79,16 @@ Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — su
 
 Default values are `4318`, `3200`, `3000`, and `5000`. Use whatever the script printed if it had to fall back.
 
+![Load Balancer: exposed ports](./images/load-balancer-exposed-ports.png)
+
 Verify the load balancer routes work:
 
 ```bash
 curl http://<LB_IP>:${TEMPO_QUERY_PORT}/ready
 curl http://<LB_IP>:${GRAFANA_PORT}/api/health
 ```
+
+![Grafana health check through the LB](./images/Grafana%20port.png)
 
 Both should return `200 OK` through the load balancer.
 
@@ -106,6 +114,8 @@ nohup opentelemetry-instrument \
 sleep 3
 tail -n 5 /tmp/flask.log
 ```
+
+![opentelemetry-instrument Flask wrapper running](./images/opentelemetry-instrument-flask-wrapper.png)
 
 You should see `Running on http://0.0.0.0:5000`.
 
