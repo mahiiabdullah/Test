@@ -10,7 +10,17 @@ set -euo pipefail
 # Some base images (e.g. Debian 12 with Python 3.12) ship `python3` without the
 # `ensurepip`/venv module. Install the version-specific `python3.X-venv`
 # package so `python3 -m venv` actually works.
+# Probe whether `python3 -m venv .venv` would actually succeed. `venv --help`
+# only checks that the module loads, NOT that ensurepip is usable, so we
+# also probe `ensurepip --version` (which is the real culprit on
+# Debian 12 / Python 3.12 base images).
+need_venv=0
 if ! python3 -m venv --help >/dev/null 2>&1; then
+  need_venv=1
+elif ! python3 -m ensurepip --version >/dev/null 2>&1; then
+  need_venv=1
+fi
+if [ "$need_venv" = "1" ]; then
   echo "Installing python3-venv (matched to active interpreter)..."
   sudo apt-get update
   PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
@@ -23,10 +33,13 @@ if ! python3 -m venv --help >/dev/null 2>&1; then
       exit 1
     fi
   fi
-  # Re-check; bail out clearly if venv still isn't usable.
-  if ! python3 -m venv --help >/dev/null 2>&1; then
-    echo "ERROR: python3-venv still not usable after apt install." >&2
-    echo "       Try:  sudo apt install python${PYV}-venv python3.12-venv" >&2
+  # Re-probe. If ensurepip is STILL missing, the base image is too stripped
+  # (no python3.X-venv or python3.X-distutils shipped) and we cannot proceed.
+  if ! python3 -m venv --help >/dev/null 2>&1 || ! python3 -m ensurepip --version >/dev/null 2>&1; then
+    echo "ERROR: python3-venv / ensurepip still not usable after apt install." >&2
+    echo "       Try installing one of these manually:" >&2
+    echo "         sudo apt install python${PYV}-venv python${PYV}-distutils python3-pip" >&2
+    echo "         sudo apt install python3.X-venv python3.X-full" >&2
     exit 1
   fi
 fi
