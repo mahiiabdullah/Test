@@ -8,12 +8,20 @@ set -euo pipefail
 
 # 0. python3-venv on a fresh Debian/Ubuntu container.
 if ! python3 -m venv --help >/dev/null 2>&1; then
-  echo "Installing python3-venv..."
+  echo "Installing python3-venv (matched to active interpreter)..."
   sudo apt-get update
-  if ! sudo apt-get install -y python3-venv python3-pip; then
-    PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-    echo "Trying python${PYV}-venv instead..."
-    sudo apt-get install -y "python${PYV}-venv" python3-pip
+  PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+  if ! sudo apt-get install -y "python${PYV}-venv" python3-pip python3-distutils; then
+    if ! sudo apt-get install -y python3-venv python3-pip python3-distutils; then
+      echo "ERROR: failed to install a working python3-venv package." >&2
+      echo "       Run manually:  sudo apt install python${PYV}-venv python3-pip" >&2
+      exit 1
+    fi
+  fi
+  if ! python3 -m venv --help >/dev/null 2>&1; then
+    echo "ERROR: python3-venv still not usable after apt install." >&2
+    echo "       Try:  sudo apt install python${PYV}-venv python3.12-venv" >&2
+    exit 1
   fi
 fi
 

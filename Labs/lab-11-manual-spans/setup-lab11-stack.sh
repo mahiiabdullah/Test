@@ -7,13 +7,27 @@
 set -euo pipefail
 
 # 0. python3-venv on a fresh Debian/Ubuntu container.
+# Some base images (e.g. Debian 12 with Python 3.12) ship `python3` without the
+# `ensurepip`/venv module. Install the version-specific `python3.X-venv`
+# package so `python3 -m venv` actually works.
 if ! python3 -m venv --help >/dev/null 2>&1; then
-  echo "Installing python3-venv..."
+  echo "Installing python3-venv (matched to active interpreter)..."
   sudo apt-get update
-  if ! sudo apt-get install -y python3-venv python3-pip; then
-    PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-    echo "Trying python${PYV}-venv instead..."
-    sudo apt-get install -y "python${PYV}-venv" python3-pip
+  PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+  # Try version-specific package first (covers Python 3.10+ on modern Debian/Ubuntu).
+  if ! sudo apt-get install -y "python${PYV}-venv" python3-pip python3-distutils; then
+    # Fall back to the generic package name.
+    if ! sudo apt-get install -y python3-venv python3-pip python3-distutils; then
+      echo "ERROR: failed to install a working python3-venv package." >&2
+      echo "       Run manually:  sudo apt install python${PYV}-venv python3-pip" >&2
+      exit 1
+    fi
+  fi
+  # Re-check; bail out clearly if venv still isn't usable.
+  if ! python3 -m venv --help >/dev/null 2>&1; then
+    echo "ERROR: python3-venv still not usable after apt install." >&2
+    echo "       Try:  sudo apt install python${PYV}-venv python3.12-venv" >&2
+    exit 1
   fi
 fi
 
@@ -39,7 +53,16 @@ export TEMPO_OTLP_PORT TEMPO_QUERY_PORT GRAFANA_PORT
 echo "Using host ports: Tempo OTLP=$TEMPO_OTLP_PORT  Tempo query=$TEMPO_QUERY_PORT  Grafana=$GRAFANA_PORT"
 
 # 1. Project directory.
-PROJECT_DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+# Prefer the caller's CWD so the script picks up wherever the user ran
+# `curl ... | bash`, and avoids re-creating a nested folder when this
+# script is downloaded into a directory that already matches the lab name.
+PROJECT_DIR="${1:-${PWD:-$(pwd)}}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || true)"
+# Only fall back to SCRIPT_DIR if it's not already an ancestor of PROJECT_DIR
+# (this prevents the nested `lab-11-manual-spans/lab-11-manual-spans/` pattern).
+if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "$SCRIPT_DIR" ]; then
+  PROJECT_DIR="$SCRIPT_DIR"
+fi
 cd "$PROJECT_DIR"
 mkdir -p grafana/provisioning/datasources
 
@@ -124,7 +147,13 @@ EOF
 # 8. venv + OTEL packages.
 if [ ! -d .venv ]; then
   echo "Creating Python virtual environment..."
-  python3 -m venv .venv
+  if ! python3 -m venv .venv; then
+    PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    echo "ERROR: failed to create .venv. The python3-venv module is missing or broken." >&2
+    echo "       Install it manually and re-run this script:" >&2
+    echo "         sudo apt update && sudo apt install -y python${PYV}-venv python3-pip python3-distutils" >&2
+    exit 1
+  fi
 fi
 
 # shellcheck disable=SC1091
