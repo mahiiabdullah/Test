@@ -151,15 +151,48 @@ FLASK_PORT=${FLASK_PORT}
 EOF
 
 # 8. venv + the project packages.
+# Try python3 -m venv first, fall back to `uv` (works without ensurepip),
+# fall back to pip --user --break-system-packages.
+PYBIN=""
 if [ ! -d .venv ]; then
   echo "Creating Python virtual environment..."
-  python3 -m venv .venv
+  if ! python3 -m venv .venv 2>/tmp/.venv.err; then
+    echo "WARN: python3 -m venv failed ($(head -1 /tmp/.venv.err)). Trying uv..."
+    if ! command -v uv >/dev/null 2>&1; then
+      if command -v curl >/dev/null 2>&1; then
+        curl -fsSL https://astral.sh/uv/install.sh | sh
+      elif command -v wget >/dev/null 2>&1; then
+        wget -qO- https://astral.sh/uv/install.sh | sh
+      fi
+      # shellcheck disable=SC1091
+      [ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
+      export PATH="$HOME/.local/bin:$PATH"
+    fi
+    if command -v uv >/dev/null 2>&1; then
+      uv venv .venv
+    else
+      echo "WARN: uv install failed. Falling back to pip --user --break-system-packages."
+      rm -rf .venv
+      PYBIN="python3 --break-system-packages"
+    fi
+  fi
 fi
 
-# shellcheck disable=SC1091
-source .venv/bin/activate
-python -m pip install --upgrade pip >/dev/null
-python -m pip install --quiet \
+if [ -d .venv ]; then
+  # shellcheck disable=SC1091
+  if [ -f .venv/bin/activate ]; then
+    source .venv/bin/activate || echo "WARN: failed to source .venv/bin/activate; using system python."
+  fi
+  PYBIN="${PYBIN:-python}"
+fi
+
+if [ -z "$PYBIN" ]; then
+  echo "ERROR: could not set up a Python environment (venv / uv / user-site all failed)." >&2
+  exit 1
+fi
+
+$PYBIN -m pip install --upgrade pip >/dev/null
+$PYBIN -m pip install --quiet \
   flask \
   celery \
   redis \
