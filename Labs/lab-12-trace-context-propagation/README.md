@@ -41,6 +41,7 @@ wget -O setup-lab12-stack.sh \
 chmod +x setup-lab12-stack.sh
 ./setup-lab12-stack.sh
 ```
+![Setup script output: compose up + Redis + venv + ports bound](./images/setup-lab12-script-output.png)
 
 Load the chosen ports into your shell so every later step can reference them:
 
@@ -59,13 +60,11 @@ echo "TEMPO_OTLP_PORT=$TEMPO_OTLP_PORT  TEMPO_QUERY_PORT=$TEMPO_QUERY_PORT  GRAF
 
 The health-check lines at the end of the script (`Tempo ready?`, `Grafana ready?`, `Redis ready?`) should report `200`, `200`, and `PONG` respectively. A `000` or `no` means the container is still booting — wait a few seconds and re-run.
 
-![Setup script output: compose up + Redis + venv + ports bound](./images/setup-lab12-script-output.png)
-
-> **Sanity check vs Lab 11.** The Lab 11 setup prints a slightly different tail (it does not install or start Redis). The lab-12 script exits with `Stack is up` followed by the four host → container port lines (3002 → Grafana, 3201 → Tempo query, 4319 → OTLP, 8000 → Flask). If you see this layout, the script ran the correct Lab 12 path. For comparison, the lab-11 boot output is also captured below.
 
 ![Reference: lab-11 setup-script output for comparison](./images/setup-lab11-script-output.png)
 
-![Loading the chosen ports into the shell](./images/load-stack-ports-into-shell.png)
+> **Sanity check vs Lab 11.** The Lab 11 setup prints a slightly different tail (it does not install or start Redis). The lab-12 script exits with `Stack is up` followed by the four host → container port lines (3002 → Grafana, 3201 → Tempo query, 4319 → OTLP, 8000 → Flask). If you see this layout, the script ran the correct Lab 12 path. For comparison, the lab-11 boot output is also captured below.
+
 
 Verify the load balancer routes work:
 
@@ -74,7 +73,7 @@ curl http://<LB_IP>:${TEMPO_QUERY_PORT}/ready
 curl http://<LB_IP>:${GRAFANA_PORT}/api/health
 ```
 
-![Health checks against Tempo and Grafana through the load balancer](./images/tempo-grafana-ready.png)
+![Loading the chosen ports into the shell](./images/load-stack-ports-into-shell.png)
 
 Both should return `200 OK` through the load balancer.
 
@@ -97,7 +96,7 @@ Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — su
 
 Default values are `4318`, `3200`, `3000`, and `8000`. Use whatever the script printed if it had to fall back.
 
-![Load Balancer modal: Tempo + Grafana ports exposed](./images/load-balancer-tempo-grafana-ports.png)
+![Loadbalancer setup](./images/Screenshot%202026-08-18%20034406.png)
 
 ## Step 3 — Start the Celery worker and Flask app
 
@@ -130,7 +129,7 @@ echo '---'
 tail -n 5 /tmp/flask.log
 ```
 
-![Celery worker ready + wrapped Flask serving on ${FLASK_PORT}](./images/worker-and-flask-wrapper-running.png)
+![Celery worker ready + wrapped Flask serving on ${FLASK_PORT}](./images/trigger-process-request.png)
 
 The worker log should show `ready`. The Flask log should show `Running on http://0.0.0.0:${FLASK_PORT}`.
 
@@ -142,7 +141,7 @@ curl -i -X POST http://<LB_IP>:${FLASK_PORT}/process \
   -d '{"item_id": 42}'
 ```
 
-![POST /process through the load balancer returning the trace_id JSON](./images/trigger-process-request.png)
+![POST /process through the load balancer returning the trace_id JSON](./images/tempo-grafana-ready.png)
 
 Save the `trace_id` from the JSON body. Both spans — the Flask `POST /process` and the worker's `celery-process` — share this trace ID because `inject(carrier)` wrote the W3C `traceparent` header into the task kwarg, and `extract(carrier)` rebuilt the same `Context` in the worker.
 

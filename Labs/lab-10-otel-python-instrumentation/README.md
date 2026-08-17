@@ -68,11 +68,11 @@ set +a
 echo "TEMPO_OTLP_PORT=$TEMPO_OTLP_PORT  TEMPO_QUERY_PORT=$TEMPO_QUERY_PORT  GRAFANA_PORT=$GRAFANA_PORT"
 ```
 
-![Loading the chosen ports into the shell](./images/load-stack-ports-into-shell.png)
+
 
 The health-check lines at the end of the script (`Tempo ready?` and `Grafana ready?`) should both report `200`. A `000` means the container is still booting — wait a few seconds and re-run `curl http://localhost:$TEMPO_QUERY_PORT/ready`.
 
-![Health checks against Tempo and Grafana through the load balancer](./images/tempo-grafana-ready.png)
+![Health checks against Tempo and Grafana through the load balancer](./images/trigger-a-request.png)
 
 ## Step 2 — Expose the stack through the load balancer
 
@@ -102,6 +102,8 @@ curl http://<LB_IP>:${GRAFANA_PORT}/api/health
 ```
 
 Both should return `200 OK` through the load balancer.
+
+![Loading the chosen ports into the shell](./images/load-stack-ports-into-shell.png)
 
 ## Step 3 — Configure the OTLP exporter and start the wrapper
 
@@ -138,15 +140,13 @@ Open the **Load Balancer** modal. Expose one more port:
 |---|---|
 | `LB_IP` | `5000` (Flask API) |
 
-![Load Balancer modal: all four stack ports exposed](./images/load-balancer-all-ports.png)
-
 ## Step 5 — Send one request through the load balancer
 
 ```bash
 curl http://<LB_IP>:5000/hello
 ```
 
-![Trigger a /hello request through the load balancer](./images/trigger-a-request.png)
+![Trigger a /hello request through the load balancer](./images/tempo-grafana-ready.png)
 
 The JSON payload from the Flask handler should return. The wrapper has already exported the matching span to Tempo.
 

@@ -39,6 +39,7 @@ wget -O setup-lab11-stack.sh \
 chmod +x setup-lab11-stack.sh
 ./setup-lab11-stack.sh
 ```
+![Finding the LB_IP from hostname -I](./images/hostname-i.png)
 
 Load the chosen ports into your shell so every later step can reference them:
 
@@ -58,7 +59,6 @@ echo "TEMPO_OTLP_PORT=$TEMPO_OTLP_PORT  TEMPO_QUERY_PORT=$TEMPO_QUERY_PORT  GRAF
 
 The health-check lines at the end of the script (`Tempo ready?` and `Grafana ready?`) should both report `200`. A `000` means the container is still booting — wait a few seconds and re-run `curl http://localhost:$TEMPO_QUERY_PORT/ready`.
 
-![Tempo and Grafana ready](./images/tempo-grafana-ready.png)
 
 ## Step 2 — Expose the stack + Flask through the load balancer
 
@@ -68,7 +68,7 @@ Open the **Load Balancer** modal in the lab UI. Find the IP to enter:
 hostname -I
 ```
 
-![Finding the LB_IP from hostname -I](./images/hostname-i.png)
+
 
 Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — substitute the port numbers your script actually printed:
 
@@ -89,6 +89,8 @@ Verify the load balancer routes work:
 curl http://<LB_IP>:${TEMPO_QUERY_PORT}/ready
 curl http://<LB_IP>:${GRAFANA_PORT}/api/health
 ```
+
+![Tempo and Grafana ready](./images/tempo-grafana-ready.png)
 
 Both should return `200 OK` through the load balancer.
 

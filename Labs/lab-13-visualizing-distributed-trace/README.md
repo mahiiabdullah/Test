@@ -43,6 +43,8 @@ chmod +x setup-lab13-stack.sh
 ./setup-lab13-stack.sh
 ```
 
+![Setup script output: compose up + Redis + venv + ports bound + X-Trace-ID note](./images/setup-script-output.png)
+
 Load the chosen ports into your shell so every later step can reference them:
 
 ```bash
@@ -60,20 +62,8 @@ echo "TEMPO_OTLP_PORT=$TEMPO_OTLP_PORT  TEMPO_QUERY_PORT=$TEMPO_QUERY_PORT  GRAF
 
 The health-check lines at the end of the script (`Tempo ready?`, `Grafana ready?`, `Redis ready?`) should report `200`, `200`, and `PONG` respectively.
 
-![Setup script output: compose up + Redis + venv + ports bound + X-Trace-ID note](./images/setup-script-output.png)
 
-![Loading the chosen ports into the shell](./images/load-stack-ports-into-shell.png)
-
-Verify the load balancer routes work:
-
-```bash
-curl http://<LB_IP>:${TEMPO_QUERY_PORT}/ready
-curl http://<LB_IP>:${GRAFANA_PORT}/api/health
-```
-
-![Health checks against Tempo and Grafana through the load balancer](./images/tempo-grafana-ready.png)
-
-Both should return `200 OK` through the load balancer.
+![Loading the chosen ports into the shell](./images/inject-latency-and-trigger.png)
 
 ## Step 2 — Expose the stack + Flask through the load balancer
 
@@ -83,7 +73,7 @@ Open the **Load Balancer** modal in the lab UI. Find the IP to enter:
 hostname -I
 ```
 
-![Finding the LB_IP from hostname -I](./images/hostname-i.png)
+![Finding the LB_IP from hostname -I](./images/tempo-grafana-ready.png)
 
 Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — substitute the port numbers your script actually printed:
 
@@ -96,7 +86,7 @@ Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — su
 
 Default values are `4318`, `3200`, `3000`, and `8000`. Use whatever the script printed if it had to fall back.
 
-![Load Balancer modal: all four stack ports exposed](./images/load-balancer-all-ports.png)
+![Loadbalancer](./images/Screenshot%202026-08-18%20034533.png)
 
 Verify the load balancer routes work:
 
@@ -104,6 +94,8 @@ Verify the load balancer routes work:
 curl http://<LB_IP>:${TEMPO_QUERY_PORT}/ready
 curl http://<LB_IP>:${GRAFANA_PORT}/api/health
 ```
+
+![Health checks against Tempo and Grafana through the load balancer](./images/load-stack-ports-into-shell.png)
 
 Both should return `200 OK` through the load balancer.
 
@@ -135,7 +127,7 @@ echo '---'
 tail -n 5 /tmp/flask.log
 ```
 
-![Wrapped Flask app listening on the chosen ports](./images/flask-listening.png)
+![Wrapped Flask app listening on the chosen ports](./images/hostname-i.png)
 
 The worker log should show `ready`. The Flask log should show `Running on http://0.0.0.0:${FLASK_PORT}`.
 
@@ -149,7 +141,7 @@ curl -i -X POST http://<LB_IP>:${FLASK_PORT}/process \
 
 The response now carries an `X-Trace-ID` header in addition to the `trace_id` JSON field. Save it for the next step.
 
-![POST /process returning the X-Trace-ID response header](./images/trigger-process-with-x-trace-id.png)
+![POST /process returning the X-Trace-ID response header](./images/flask-listening.png)
 
 `format(..., "032x")` produces a 32-character lowercase hex string. Setting it as a header makes the value reachable by any HTTP client.
 
@@ -183,7 +175,7 @@ curl -i -X POST http://<LB_IP>:${FLASK_PORT}/process \
 
 Save the new `X-Trace-ID` and paste it into Tempo. The `celery-process` bar is now the widest by far. The latency is attributed to the worker, where it happened.
 
-![Restart worker against tasks_slow and trigger the slow path through the LB](./images/inject-latency-and-trigger.png)
+![Restart worker against tasks_slow and trigger the slow path through the LB](./images/trigger-process-with-x-trace-id.png)
 
 `tasks_slow.py` adds `time.sleep(2)` inside `do_work`. To go back to normal, restart the worker against `tasks` (`kill %1` then `nohup celery -A tasks worker --loglevel=info &`).
 
