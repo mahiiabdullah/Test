@@ -13,7 +13,7 @@ Expose the trace ID on the Flask response, open the trace in Grafana, and read t
 ## Prerequisites
 
 - Docker Engine with the Compose plugin.
-- Python 3.10 or newer. The setup script installs `python3-venv` and `python3-pip` if missing.
+- Python 3.10 or newer. The setup script installs `python3.12-venv` and `python3-pip` (idempotent) before creating the venv.
 - The setup script installs and starts `redis-server` if it is not already present.
 - Host ports `4318`, `3200`, `3000`, and `8000` free. The setup script picks the next free port if any of the first four are already in use.
 
@@ -25,9 +25,10 @@ The bundled script `setup-lab13-stack.sh` brings up the Tempo + Grafana stack, i
 mkdir -p lab-13-visualizing-distributed-trace
 cd lab-13-visualizing-distributed-trace
 
-# Pull the bundled setup script straight from the repo.
+# Pull the bundled setup script straight from the repo. Use the `Test`
+# repo so you get the apt-first venv fix + nested-path guard.
 curl -fsSL -o setup-lab13-stack.sh \
-  https://raw.githubusercontent.com/mahiiabdullah/Labs/main/Labs/lab-13-visualizing-distributed-trace/setup-lab13-stack.sh
+  https://raw.githubusercontent.com/mahiiabdullah/Test/main/Labs/lab-13-visualizing-distributed-trace/setup-lab13-stack.sh
 
 chmod +x setup-lab13-stack.sh
 ./setup-lab13-stack.sh
@@ -37,7 +38,7 @@ If `curl` is missing, use `wget`:
 
 ```bash
 wget -O setup-lab13-stack.sh \
-  https://raw.githubusercontent.com/mahiiabdullah/Labs/main/Labs/lab-13-visualizing-distributed-trace/setup-lab13-stack.sh
+  https://raw.githubusercontent.com/mahiiabdullah/Test/main/Labs/lab-13-visualizing-distributed-trace/setup-lab13-stack.sh
 chmod +x setup-lab13-stack.sh
 ./setup-lab13-stack.sh
 ```

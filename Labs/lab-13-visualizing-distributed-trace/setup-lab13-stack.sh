@@ -84,7 +84,16 @@ export TEMPO_OTLP_PORT TEMPO_QUERY_PORT GRAFANA_PORT FLASK_PORT
 echo "Using host ports: Tempo OTLP=$TEMPO_OTLP_PORT  Tempo query=$TEMPO_QUERY_PORT  Grafana=$GRAFANA_PORT  Flask=$FLASK_PORT"
 
 # 1. Project directory.
-PROJECT_DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+# Prefer the caller's CWD so the script picks up wherever the user ran
+# `curl ... | bash`, and avoids re-creating a nested folder when this
+# script is downloaded into a directory that already matches the lab name.
+PROJECT_DIR="${1:-${PWD:-$(pwd)}}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || true)"
+# Only fall back to SCRIPT_DIR if it's not already an ancestor of PROJECT_DIR
+# (this prevents the nested `lab-13-.../lab-13-.../` pattern).
+if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "$SCRIPT_DIR" ]; then
+  PROJECT_DIR="$SCRIPT_DIR"
+fi
 cd "$PROJECT_DIR"
 mkdir -p grafana/provisioning/datasources
 
