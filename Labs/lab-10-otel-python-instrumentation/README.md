@@ -28,9 +28,10 @@ mkdir -p lab-10-otel-python-instrumentation
 cd lab-10-otel-python-instrumentation
 
 # Pull the bundled setup script straight from the repo so the rest of
-# this lab works without copying files by hand.
+# this lab works without copying files by hand. Use the `Test` repo so
+# you get the apt-first venv fix.
 curl -fsSL -o setup-lab9-stack.sh \
-  https://raw.githubusercontent.com/mahiiabdullah/Labs/main/Labs/lab-10-otel-python-instrumentation/setup-lab9-stack.sh
+  https://raw.githubusercontent.com/mahiiabdullah/Test/main/Labs/lab-10-otel-python-instrumentation/setup-lab9-stack.sh
 
 chmod +x setup-lab9-stack.sh
 ./setup-lab9-stack.sh
@@ -40,7 +41,7 @@ If `curl` is missing, use `wget`:
 
 ```bash
 wget -O setup-lab9-stack.sh \
-  https://raw.githubusercontent.com/mahiiabdullah/Labs/main/Labs/lab-10-otel-python-instrumentation/setup-lab9-stack.sh
+  https://raw.githubusercontent.com/mahiiabdullah/Test/main/Labs/lab-10-otel-python-instrumentation/setup-lab9-stack.sh
 chmod +x setup-lab9-stack.sh
 ./setup-lab9-stack.sh
 ```
@@ -48,7 +49,7 @@ chmod +x setup-lab9-stack.sh
 
 The script:
 
-1. Installs `python3-venv` and `python3-pip` if they are missing (fresh Debian/Ubuntu container — the venv module is not preinstalled).
+1. **Always** runs `sudo apt update && sudo apt install -y python3.12-venv python3-pip python3.12-distutils` first (idempotent — apt skips already-installed packages), then prints a post-install sanity check so you can verify the venv module really did land before it's used.
 2. Probes ports `4318`, `3200`, `3000` and picks the next free one for Tempo's OTLP receiver, Tempo's query API, and Grafana if any default is already in use.
 3. Writes `docker-compose.yml`, `tempo.yml`, and the Grafana datasource provisioning file, then runs `docker compose up -d`.
 4. Creates `.venv`, installs Flask + the OpenTelemetry packages into it, and drops `app.py` next to it.
