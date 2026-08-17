@@ -60,6 +60,21 @@ echo "TEMPO_OTLP_PORT=$TEMPO_OTLP_PORT  TEMPO_QUERY_PORT=$TEMPO_QUERY_PORT  GRAF
 
 The health-check lines at the end of the script (`Tempo ready?`, `Grafana ready?`, `Redis ready?`) should report `200`, `200`, and `PONG` respectively.
 
+![Setup script output: compose up + Redis + venv + ports bound + X-Trace-ID note](./images/setup-script-output.png)
+
+![Loading the chosen ports into the shell](./images/load-stack-ports-into-shell.png)
+
+Verify the load balancer routes work:
+
+```bash
+curl http://<LB_IP>:${TEMPO_QUERY_PORT}/ready
+curl http://<LB_IP>:${GRAFANA_PORT}/api/health
+```
+
+![Health checks against Tempo and Grafana through the load balancer](./images/tempo-grafana-ready.png)
+
+Both should return `200 OK` through the load balancer.
+
 ## Step 2 — Expose the stack + Flask through the load balancer
 
 Open the **Load Balancer** modal in the lab UI. Find the IP to enter:
@@ -67,6 +82,8 @@ Open the **Load Balancer** modal in the lab UI. Find the IP to enter:
 ```bash
 hostname -I
 ```
+
+![Finding the LB_IP from hostname -I](./images/hostname-i.png)
 
 Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — substitute the port numbers your script actually printed:
 
@@ -116,6 +133,8 @@ echo '---'
 tail -n 5 /tmp/flask.log
 ```
 
+![Wrapped Flask app listening on the chosen ports](./images/flask-listening.png)
+
 The worker log should show `ready`. The Flask log should show `Running on http://0.0.0.0:${FLASK_PORT}`.
 
 ## Step 4 — Trigger the request and capture the X-Trace-ID header
@@ -127,6 +146,8 @@ curl -i -X POST http://<LB_IP>:${FLASK_PORT}/process \
 ```
 
 The response now carries an `X-Trace-ID` header in addition to the `trace_id` JSON field. Save it for the next step.
+
+![POST /process returning the X-Trace-ID response header](./images/trigger-process-with-x-trace-id.png)
 
 `format(..., "032x")` produces a 32-character lowercase hex string. Setting it as a header makes the value reachable by any HTTP client.
 
@@ -159,6 +180,8 @@ curl -i -X POST http://<LB_IP>:${FLASK_PORT}/process \
 ```
 
 Save the new `X-Trace-ID` and paste it into Tempo. The `celery-process` bar is now the widest by far. The latency is attributed to the worker, where it happened.
+
+![Restart worker against tasks_slow and trigger the slow path through the LB](./images/inject-latency-and-trigger.png)
 
 `tasks_slow.py` adds `time.sleep(2)` inside `do_work`. To go back to normal, restart the worker against `tasks` (`kill %1` then `nohup celery -A tasks worker --loglevel=info &`).
 
