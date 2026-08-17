@@ -68,6 +68,8 @@ Open the **Load Balancer** modal in the lab UI. Find the IP to enter:
 hostname -I
 ```
 
+![Finding the LB_IP from hostname -I](./images/hostname-i.png)
+
 Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — substitute the port numbers your script actually printed:
 
 | Enter IP | Enter Port |
