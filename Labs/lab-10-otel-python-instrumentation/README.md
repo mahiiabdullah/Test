@@ -45,11 +45,11 @@ wget -O setup-lab9-stack.sh \
 chmod +x setup-lab9-stack.sh
 ./setup-lab9-stack.sh
 ```
-![](./images/output-1.png)
+![Setup script output: compose up + ports bound + venv ready](./images/setup-script-output.png)
 
 The script:
 
-1. **Always** runs `sudo apt update && sudo apt install -y python3.12-venv python3-pip python3.12-distutils` first (idempotent — apt skips already-installed packages), then prints a post-install sanity check so you can verify the venv module really did land before it's used.
+1. **Always** runs `sudo apt update && sudo apt install -y python3.12-venv python3-pip` first (idempotent — apt skips already-installed packages), then prints a post-install sanity check so you can verify the venv module really did land before it's used. `python3.12-full` is the last-resort fallback if `ensurepip` is still missing.
 2. Probes ports `4318`, `3200`, `3000` and picks the next free one for Tempo's OTLP receiver, Tempo's query API, and Grafana if any default is already in use.
 3. Writes `docker-compose.yml`, `tempo.yml`, and the Grafana datasource provisioning file, then runs `docker compose up -d`.
 4. Creates `.venv`, installs Flask + the OpenTelemetry packages into it, and drops `app.py` next to it.
@@ -68,7 +68,11 @@ set +a
 echo "TEMPO_OTLP_PORT=$TEMPO_OTLP_PORT  TEMPO_QUERY_PORT=$TEMPO_QUERY_PORT  GRAFANA_PORT=$GRAFANA_PORT"
 ```
 
+![Loading the chosen ports into the shell](./images/load-stack-ports-into-shell.png)
+
 The health-check lines at the end of the script (`Tempo ready?` and `Grafana ready?`) should both report `200`. A `000` means the container is still booting — wait a few seconds and re-run `curl http://localhost:$TEMPO_QUERY_PORT/ready`.
+
+![Health checks against Tempo and Grafana through the load balancer](./images/tempo-grafana-ready.png)
 
 ## Step 2 — Expose the stack through the load balancer
 
@@ -122,6 +126,8 @@ sleep 3
 tail -n 5 /tmp/flask.log
 ```
 
+![opentelemetry-instrument wrapper running the Flask app](./images/opentelemetry-instrument-flask-wrapper.png)
+
 You should see `Running on http://0.0.0.0:5000`. The wrapper injects bytecode at import time so every Flask request becomes a span, and sends them to `localhost:${TEMPO_OTLP_PORT}` (the local Tempo).
 
 ## Step 4 — Expose the Flask port through the load balancer
@@ -137,6 +143,8 @@ Open the **Load Balancer** modal. Expose one more port:
 ```bash
 curl http://<LB_IP>:5000/hello
 ```
+
+![Trigger a /hello request through the load balancer](./images/trigger-a-request.png)
 
 The JSON payload from the Flask handler should return. The wrapper has already exported the matching span to Tempo.
 
