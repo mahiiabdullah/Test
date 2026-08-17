@@ -138,6 +138,8 @@ Open the **Load Balancer** modal. Expose one more port:
 |---|---|
 | `LB_IP` | `5000` (Flask API) |
 
+![Load Balancer modal: all four stack ports exposed](./images/load-balancer-all-ports.png)
+
 ## Step 5 — Send one request through the load balancer
 
 ```bash

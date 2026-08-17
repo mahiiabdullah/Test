@@ -97,6 +97,8 @@ Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — su
 
 Default values are `4318`, `3200`, `3000`, and `8000`. Use whatever the script printed if it had to fall back.
 
+![Load Balancer modal: Tempo + Grafana ports exposed](./images/load-balancer-tempo-grafana-ports.png)
+
 ## Step 3 — Start the Celery worker and Flask app
 
 The setup script already created `.venv`, started Redis, and wrote `tasks.py` + `app.py`. Now run the worker and the wrapped Flask app in the background so they survive the next `curl` command. Stop them with `kill %1 %2` when you finish.
