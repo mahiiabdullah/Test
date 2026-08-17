@@ -90,8 +90,6 @@ curl http://<LB_IP>:${TEMPO_QUERY_PORT}/ready
 curl http://<LB_IP>:${GRAFANA_PORT}/api/health
 ```
 
-![Grafana health check through the LB](./images/Grafana%20port.png)
-
 Both should return `200 OK` through the load balancer.
 
 ## Step 3 — Run the wrapped Flask app
