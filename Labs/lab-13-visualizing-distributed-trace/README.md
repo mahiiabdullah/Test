@@ -86,7 +86,7 @@ Use the **first** IP printed as `LB_IP`. Expose four ports, one at a time — su
 
 Default values are `4318`, `3200`, `3000`, and `8000`. Use whatever the script printed if it had to fall back.
 
-![Loadbalancer](./images/Screenshot%202026-08-18%20034533.png)
+![Loadbalancer](./images/load-balancer-all-ports.png)
 
 Verify the load balancer routes work:
 
