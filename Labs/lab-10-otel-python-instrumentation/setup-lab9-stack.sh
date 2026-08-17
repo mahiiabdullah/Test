@@ -10,6 +10,18 @@ set -euo pipefail
 #    with "externally-managed-environment". Install the metapackage,
 #    falling back to the versioned variant if the metapackage is
 #    unavailable.
+# Run the apt-install FIRST (idempotent — apt skips already-installed
+# packages) so the venv module + ensurepip are guaranteed to be present
+# before we ever try `python3 -m venv .venv`.
+PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+echo "Making sure python${PYV}-venv + python3-pip + python${PYV}-distutils are installed..."
+sudo apt-get update
+# Try version-specific package first (covers Python 3.10+ on modern Debian/Ubuntu).
+if ! sudo apt-get install -y "python${PYV}-venv" python3-pip "python${PYV}-distutils"; then
+  # Fall back to the generic package name.
+  sudo apt-get install -y python3-venv python3-pip python3-distutils || true
+fi
+
 # Probe whether `python3 -m venv .venv` would actually succeed. `venv --help`
 # only checks that the module loads, NOT that ensurepip is usable, so we
 # also probe `ensurepip --version` (which is the real culprit on
@@ -21,27 +33,11 @@ elif ! python3 -m ensurepip --version >/dev/null 2>&1; then
   need_venv=1
 fi
 if [ "$need_venv" = "1" ]; then
-  echo "Installing python3-venv (matched to active interpreter)..."
-  sudo apt-get update
-  PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-  # Try version-specific package first (covers Python 3.10+ on modern Debian/Ubuntu).
-  if ! sudo apt-get install -y "python${PYV}-venv" python3-pip python3-distutils; then
-    # Fall back to the generic package name.
-    if ! sudo apt-get install -y python3-venv python3-pip python3-distutils; then
-      echo "ERROR: failed to install a working python3-venv package." >&2
-      echo "       Run manually:  sudo apt install python${PYV}-venv python3-pip" >&2
-      exit 1
-    fi
-  fi
-  # Re-probe. If ensurepip is STILL missing, the base image is too stripped
-  # (no python3.X-venv or python3.X-distutils shipped) and we cannot proceed.
-  if ! python3 -m venv --help >/dev/null 2>&1 || ! python3 -m ensurepip --version >/dev/null 2>&1; then
-    echo "ERROR: python3-venv / ensurepip still not usable after apt install." >&2
-    echo "       Try installing one of these manually:" >&2
-    echo "         sudo apt install python${PYV}-venv python${PYV}-distutils python3-pip" >&2
-    echo "         sudo apt install python3.X-venv python3.X-full" >&2
-    exit 1
-  fi
+  echo "ERROR: python3-venv / ensurepip still not usable after apt install." >&2
+  echo "       Try installing one of these manually:" >&2
+  echo "         sudo apt install python${PYV}-venv python${PYV}-distutils python3-pip" >&2
+  echo "         sudo apt install python3.X-venv python3.X-full" >&2
+  exit 1
 fi
 
 # 0b. Pick host ports that are not already in use. Poridhi lab containers
@@ -161,6 +157,12 @@ EOF
 # Try python3 -m venv first, fall back to `uv` (works without ensurepip),
 # fall back to pip --user --break-system-packages.
 PYBIN=""
+# If a previous run left a half-broken .venv (no python3 binary inside),
+# nuke it and recreate.
+if [ -d .venv ] && [ ! -x .venv/bin/python3 ]; then
+  echo "Removing half-created .venv from a previous failed run..."
+  rm -rf .venv
+fi
 if [ ! -d .venv ]; then
   echo "Creating Python virtual environment..."
   if ! python3 -m venv .venv 2>/tmp/.venv.err; then
@@ -185,7 +187,7 @@ if [ ! -d .venv ]; then
   fi
 fi
 
-if [ -d .venv ]; then
+if [ -d .venv ] && [ -x .venv/bin/python3 ]; then
   # shellcheck disable=SC1091
   if [ -f .venv/bin/activate ]; then
     source .venv/bin/activate || echo "WARN: failed to source .venv/bin/activate; using system python."
