@@ -16,9 +16,17 @@ echo "Making sure python${PYV}-venv + python3-pip + python${PYV}-distutils are i
 sudo apt-get update
 # Try version-specific package first (covers Python 3.10+ on modern Debian/Ubuntu).
 if ! sudo apt-get install -y "python${PYV}-venv" python3-pip "python${PYV}-distutils"; then
-  # Fall back to the generic package name.
+  # Fall back to the generic package name. `|| true` so a single failure
+  # doesn't abort the whole script under `set -e`.
   sudo apt-get install -y python3-venv python3-pip python3-distutils || true
 fi
+# Show the user what is actually available after the install so they can
+# verify python3.X-venv really did land before we attempt to use it.
+echo "--- post-apt sanity check ---"
+dpkg -l "python${PYV}-venv" 2>/dev/null | tail -1 || true
+"python${PYV}" -m venv --help 2>&1 | head -3 || true
+"python${PYV}" -m ensurepip --version 2>&1 | head -1 || true
+echo "-----------------------------"
 
 # Probe whether `python3 -m venv .venv` would actually succeed. `venv --help`
 # only checks that the module loads, NOT that ensurepip is usable, so we

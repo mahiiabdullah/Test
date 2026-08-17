@@ -125,6 +125,8 @@ You should see `Running on http://0.0.0.0:5000`.
 curl http://<LB_IP>:5000/hello
 ```
 
+![Trigger a request](./images/trigger-a-request.png)
+
 The Flask handler returns the JSON payload. The wrapper exports the trace to Tempo.
 
 ## Step 5 — Inspect the trace in Grafana
