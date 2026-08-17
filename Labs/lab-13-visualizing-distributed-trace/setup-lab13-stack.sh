@@ -10,14 +10,23 @@ set -euo pipefail
 # Run the apt-install FIRST (idempotent — apt skips already-installed
 # packages) so the venv module + ensurepip are guaranteed to be present
 # before we ever try `python3 -m venv .venv`.
+# NOTE: distutils was removed in Python 3.12 and is NOT a separate apt
+# package on Ubuntu Noble. Do not try to install python3.12-distutils —
+# it doesn't exist, and trying makes the whole install line fail.
 PYV=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-echo "Making sure python${PYV}-venv + python3-pip + python${PYV}-distutils are installed..."
+echo "Making sure python${PYV}-venv + python3-pip are installed..."
 sudo apt-get update
 # Try version-specific package first (covers Python 3.10+ on modern Debian/Ubuntu).
-if ! sudo apt-get install -y "python${PYV}-venv" python3-pip "python${PYV}-distutils"; then
+if ! sudo apt-get install -y "python${PYV}-venv" python3-pip; then
   # Fall back to the generic package name. `|| true` so a single failure
   # doesn't abort the whole script under `set -e`.
-  sudo apt-get install -y python3-venv python3-pip python3-distutils || true
+  sudo apt-get install -y python3-venv python3-pip || true
+fi
+# Last resort: some minimal base images strip pip entirely. Try
+# python3.X-full which bundles venv + ensurepip + pip + distutils.
+if ! python3 -m ensurepip --version >/dev/null 2>&1; then
+  echo "ensurepip still missing; trying python${PYV}-full as a last resort..."
+  sudo apt-get install -y "python${PYV}-full" || sudo apt-get install -y python3-full || true
 fi
 # Show the user what is actually available after the install so they can
 # verify python3.X-venv really did land before we attempt to use it.
